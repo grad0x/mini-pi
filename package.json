@@ -1,0 +1,17 @@
+{
+  "name": "mini-pi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A minimal Agent Harness implementation inspired by Pi.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

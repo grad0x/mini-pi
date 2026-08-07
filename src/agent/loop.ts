@@ -1,0 +1,90 @@
+import type { ModelClient } from "../providers/model-client.js";
+import type { AgentState } from "./state.js";
+import type {
+  AssistantMessage,
+  ToolCall,
+  ToolResultMessage,
+} from "./types.js";
+
+export interface AgentLoopOptions {
+  maxTurns?: number;
+}
+
+export class MaxTurnsExceededError extends Error {
+  constructor(maxTurns: number) {
+    super(`Agent loop exceeded the maximum of ${maxTurns} model turns`);
+    this.name = "MaxTurnsExceededError";
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function executeToolCall(
+  state: AgentState,
+  call: ToolCall,
+): Promise<ToolResultMessage> {
+  const tool = state.tools.find((candidate) => candidate.name === call.name);
+
+  if (!tool) {
+    return {
+      role: "tool",
+      name: call.name,
+      toolCallId: call.id,
+      content: `Unknown tool: ${call.name}`,
+      isError: true,
+    };
+  }
+
+  try {
+    const result = await tool.execute(call.id, call.arguments);
+    return {
+      role: "tool",
+      name: call.name,
+      toolCallId: call.id,
+      content: result.content,
+      ...(result.isError === undefined ? {} : { isError: result.isError }),
+    };
+  } catch (error) {
+    return {
+      role: "tool",
+      name: call.name,
+      toolCallId: call.id,
+      content: `Tool execution failed: ${errorMessage(error)}`,
+      isError: true,
+    };
+  }
+}
+
+/** Runs model and tool turns until the model returns a final text response. */
+export async function runAgentLoop(
+  state: AgentState,
+  model: ModelClient,
+  options: AgentLoopOptions = {},
+): Promise<AssistantMessage> {
+  const maxTurns = options.maxTurns ?? 10;
+
+  if (!Number.isInteger(maxTurns) || maxTurns < 1) {
+    throw new RangeError("maxTurns must be a positive integer");
+  }
+
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    const assistantMessage = await model.generate({
+      messages: [...state.messages],
+      tools: state.tools.map(({ name, description }) => ({ name, description })),
+    });
+    state.messages.push(assistantMessage);
+
+    const toolCalls = assistantMessage.toolCalls ?? [];
+    if (toolCalls.length === 0) {
+      return assistantMessage;
+    }
+
+    for (const call of toolCalls) {
+      state.messages.push(await executeToolCall(state, call));
+    }
+  }
+
+  throw new MaxTurnsExceededError(maxTurns);
+}
