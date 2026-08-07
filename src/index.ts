@@ -17,4 +17,20 @@ export type {
   ModelInput,
   ModelToolDefinition,
 } from "./providers/model-client.js";
-export type { AgentTool } from "./tools/tool.js";
+export { createReadFileTool } from "./tools/read-file.js";
+export type { FileToolOptions } from "./tools/read-file.js";
+export { createRunCommandTool } from "./tools/run-command.js";
+export type { RunCommandToolOptions } from "./tools/run-command.js";
+export type {
+  AgentTool,
+  ToolParameterProperty,
+  ToolParameterSchema,
+  ToolParameterType,
+} from "./tools/tool.js";
+export { validateToolArguments } from "./tools/validate-arguments.js";
+export { createWriteFileTool } from "./tools/write-file.js";
+export {
+  resolveExistingWorkspacePath,
+  resolveWorkspacePath,
+  resolveWorkspaceWritePath,
+} from "./tools/workspace.js";

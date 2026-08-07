@@ -1,8 +1,10 @@
 import type { AgentMessage, AssistantMessage } from "../agent/types.js";
+import type { ToolParameterSchema } from "../tools/tool.js";
 
 export interface ModelToolDefinition {
   name: string;
   description: string;
+  parameters: ToolParameterSchema;
 }
 
 export interface ModelInput {

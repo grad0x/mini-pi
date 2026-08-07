@@ -19,12 +19,19 @@ class SequenceModel implements ModelClient {
 }
 
 function tool(
-  execute: AgentTool["execute"] = async (toolCallId) => ({
-    toolCallId,
-    content: "tool-result",
-  }),
+  execute: AgentTool["execute"] = async () => ({ content: "tool-result" }),
 ): AgentTool {
-  return { name: "mock_tool", description: "Returns a mock result", execute };
+  return {
+    name: "mock_tool",
+    description: "Returns a mock result",
+    parameters: {
+      type: "object",
+      properties: { value: { type: "number" } },
+      required: ["value"],
+      additionalProperties: false,
+    },
+    execute,
+  };
 }
 
 const callTool: AssistantMessage = {
@@ -43,14 +50,42 @@ describe("Agent", () => {
     const result = await agent.prompt("hi");
 
     expect(result.finalMessage.content).toBe("hello");
-    expect(result.messages).toEqual([
+    expect(result.newMessages).toEqual([
       { role: "user", content: "hi" },
       { role: "assistant", content: "hello" },
     ]);
     expect(agent.state.status).toBe("idle");
   });
 
-  it("runs a tool and sends its result back to the model", async () => {
+  it("returns only the messages created by each prompt", async () => {
+    const model = new SequenceModel([
+      { role: "assistant", content: "first answer" },
+      { role: "assistant", content: "second answer" },
+    ]);
+    const agent = new Agent(model);
+
+    const first = await agent.prompt("first");
+    const second = await agent.prompt("second");
+
+    expect(first.newMessages).toEqual([
+      { role: "user", content: "first" },
+      { role: "assistant", content: "first answer" },
+    ]);
+    expect(second.newMessages).toEqual([
+      { role: "user", content: "second" },
+      { role: "assistant", content: "second answer" },
+    ]);
+    expect(agent.state.messages).toEqual([
+      ...first.newMessages,
+      ...second.newMessages,
+    ]);
+    expect(model.generate.mock.calls[1]?.[0].messages).toEqual([
+      ...first.newMessages,
+      { role: "user", content: "second" },
+    ]);
+  });
+
+  it("owns toolCallId correlation and sends the tool result to the model", async () => {
     const model = new SequenceModel([
       callTool,
       { role: "assistant", content: "done: tool-result" },
@@ -60,15 +95,15 @@ describe("Agent", () => {
 
     const result = await agent.prompt("calculate something");
 
-    expect(mockTool.execute).toHaveBeenCalledWith("call-1", { value: 1 });
+    expect(mockTool.execute).toHaveBeenCalledWith({ value: 1 });
     expect(model.generate).toHaveBeenCalledTimes(2);
-    expect(result.messages.map((message) => message.role)).toEqual([
+    expect(result.newMessages.map((message) => message.role)).toEqual([
       "user",
       "assistant",
       "tool",
       "assistant",
     ]);
-    expect(result.messages[2]).toEqual({
+    expect(result.newMessages[2]).toEqual({
       role: "tool",
       name: "mock_tool",
       toolCallId: "call-1",
@@ -77,9 +112,18 @@ describe("Agent", () => {
     expect(result.finalMessage.content).toBe("done: tool-result");
 
     const secondInput = model.generate.mock.calls[1]?.[0];
-    expect(secondInput?.messages.at(-1)).toEqual(result.messages[2]);
+    expect(secondInput?.messages.at(-1)).toEqual(result.newMessages[2]);
     expect(secondInput?.tools).toEqual([
-      { name: "mock_tool", description: "Returns a mock result" },
+      {
+        name: "mock_tool",
+        description: "Returns a mock result",
+        parameters: {
+          type: "object",
+          properties: { value: { type: "number" } },
+          required: ["value"],
+          additionalProperties: false,
+        },
+      },
     ]);
   });
 
@@ -98,7 +142,7 @@ describe("Agent", () => {
 
     const result = await agent.prompt("try it");
 
-    expect(result.messages[2]).toEqual({
+    expect(result.newMessages[2]).toEqual({
       role: "tool",
       name: "unknown_tool",
       toolCallId: "unknown-1",
@@ -120,7 +164,7 @@ describe("Agent", () => {
 
     const result = await agent.prompt("fail safely");
 
-    expect(result.messages[2]).toEqual({
+    expect(result.newMessages[2]).toEqual({
       role: "tool",
       name: "mock_tool",
       toolCallId: "call-1",
@@ -128,6 +172,31 @@ describe("Agent", () => {
       isError: true,
     });
     expect(result.finalMessage.content).toBe("handled failure");
+  });
+
+  it("rejects invalid tool arguments before executing the tool", async () => {
+    const model = new SequenceModel([
+      {
+        ...callTool,
+        toolCalls: [
+          { id: "call-invalid", name: "mock_tool", arguments: { value: "1" } },
+        ],
+      },
+      { role: "assistant", content: "invalid arguments handled" },
+    ]);
+    const execute = vi.fn(tool().execute);
+    const agent = new Agent(model, { tools: [tool(execute)] });
+
+    const result = await agent.prompt("use invalid arguments");
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.newMessages[2]).toEqual({
+      role: "tool",
+      name: "mock_tool",
+      toolCallId: "call-invalid",
+      content: "Invalid arguments for mock_tool: argument value must be a number",
+      isError: true,
+    });
   });
 
   it("stops a model that keeps requesting tools at maxTurns", async () => {

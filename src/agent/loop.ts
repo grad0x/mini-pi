@@ -1,4 +1,5 @@
 import type { ModelClient } from "../providers/model-client.js";
+import { validateToolArguments } from "../tools/validate-arguments.js";
 import type { AgentState } from "./state.js";
 import type {
   AssistantMessage,
@@ -37,8 +38,19 @@ async function executeToolCall(
     };
   }
 
+  const validation = validateToolArguments(tool.parameters, call.arguments);
+  if (!validation.valid) {
+    return {
+      role: "tool",
+      name: call.name,
+      toolCallId: call.id,
+      content: `Invalid arguments for ${call.name}: ${validation.error}`,
+      isError: true,
+    };
+  }
+
   try {
-    const result = await tool.execute(call.id, call.arguments);
+    const result = await tool.execute(validation.args);
     return {
       role: "tool",
       name: call.name,
@@ -72,7 +84,11 @@ export async function runAgentLoop(
   for (let turn = 0; turn < maxTurns; turn += 1) {
     const assistantMessage = await model.generate({
       messages: [...state.messages],
-      tools: state.tools.map(({ name, description }) => ({ name, description })),
+      tools: state.tools.map(({ name, description, parameters }) => ({
+        name,
+        description,
+        parameters,
+      })),
     });
     state.messages.push(assistantMessage);
 

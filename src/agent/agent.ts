@@ -30,6 +30,7 @@ export class Agent {
       throw new Error("Agent is already running");
     }
 
+    const runStart = this.state.messages.length;
     const userMessage: UserMessage = { role: "user", content: input };
     this.state.messages.push(userMessage);
     this.state.status = "running";
@@ -39,7 +40,10 @@ export class Agent {
         ...(this.maxTurns === undefined ? {} : { maxTurns: this.maxTurns }),
       });
       this.state.status = "idle";
-      return { finalMessage, messages: [...this.state.messages] };
+      return {
+        finalMessage,
+        newMessages: this.state.messages.slice(runStart),
+      };
     } catch (error) {
       this.state.status = "error";
       throw error;

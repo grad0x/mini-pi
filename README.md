@@ -13,6 +13,8 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Project bootstrap
 - Minimal Agent Core
 - Minimal Agent Loop
+- Workspace-bounded file and command tools
+- Runtime-owned tool result correlation and run trajectories
 
 ## Not included yet
 
@@ -20,7 +22,6 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Context compiler
 - Hooks / policies
 - Events / tracing
-- Real filesystem tools
 - Server / protocol
 - Multi-agent
 

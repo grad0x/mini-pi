@@ -1,11 +1,10 @@
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: Record<string, unknown>;
+  arguments: unknown;
 }
 
 export interface ToolResult {
-  toolCallId: string;
   content: string;
   isError?: boolean;
 }
@@ -21,9 +20,12 @@ export interface AssistantMessage {
   toolCalls?: ToolCall[];
 }
 
-export interface ToolResultMessage extends ToolResult {
+export interface ToolResultMessage {
   role: "tool";
   name: string;
+  toolCallId: string;
+  content: string;
+  isError?: boolean;
 }
 
 // These are Mini Pi messages rather than types from any model provider SDK.
@@ -34,5 +36,5 @@ export type AgentMessage =
 
 export interface AgentRunResult {
   finalMessage: AssistantMessage;
-  messages: AgentMessage[];
+  newMessages: AgentMessage[];
 }
