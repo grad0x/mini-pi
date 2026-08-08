@@ -15,15 +15,28 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Minimal Agent Loop
 - Workspace-bounded file and command tools
 - Runtime-owned tool result correlation and run trajectories
+- Session persistence
+- JSONL restore
 
 ## Not included yet
 
-- Session persistence
-- Context compiler
-- Hooks / policies
-- Events / tracing
-- Server / protocol
+- Context compiler / compaction
+- Branch / navigation
+- Operations / events / tracing
+- Hooks / policies / approval
+- In-flight crash recovery
+- SQLite / server / protocol
 - Multi-agent
+
+## Session design
+
+`AgentState` holds mutable in-process runtime state. `SessionManager` owns the
+durable conversation trajectory, while `JsonlSessionStore` provides the first
+append-only persistence backend. `SessionRuntime` coordinates Agent runs with
+run-boundary persistence.
+
+Completed and failed runs can be restored between processes. Crash recovery
+during an in-flight run is not supported yet.
 
 ## Development
 

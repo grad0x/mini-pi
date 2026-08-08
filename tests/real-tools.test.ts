@@ -200,4 +200,18 @@ describe("run_command", () => {
     expect(result.isError).toBe(true);
     expect(result.content).toContain("timedOut: true (50 ms)");
   });
+
+  it("returns an error when stdout exceeds maxOutputBytes", async () => {
+    const { workspace } = await createWorkspace();
+    const tool = createRunCommandTool({
+      workspaceRoot: workspace,
+      maxOutputBytes: 32,
+    });
+    const command = `${JSON.stringify(process.execPath)} -e "process.stdout.write('x'.repeat(10000))"`;
+
+    const result = await tool.execute({ command });
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("exitCode:");
+  });
 });

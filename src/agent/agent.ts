@@ -2,11 +2,12 @@ import type { ModelClient } from "../providers/model-client.js";
 import type { AgentTool } from "../tools/tool.js";
 import { runAgentLoop } from "./loop.js";
 import type { AgentState } from "./state.js";
-import type { AgentRunResult, UserMessage } from "./types.js";
+import type { AgentMessage, AgentRunResult, UserMessage } from "./types.js";
 
 export interface AgentOptions {
   tools?: AgentTool[];
   maxTurns?: number;
+  initialMessages?: readonly AgentMessage[];
 }
 
 /** A stateful runtime that owns conversation history and delegates work to the loop. */
@@ -19,7 +20,7 @@ export class Agent {
     this.model = model;
     this.maxTurns = options.maxTurns;
     this.state = {
-      messages: [],
+      messages: [...(options.initialMessages ?? [])],
       tools: [...(options.tools ?? [])],
       status: "idle",
     };

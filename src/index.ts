@@ -17,6 +17,19 @@ export type {
   ModelInput,
   ModelToolDefinition,
 } from "./providers/model-client.js";
+export type {
+  MessageSessionEntry,
+  SessionEntry,
+  SessionEntryBase,
+} from "./session/entry.js";
+export { JsonlSessionStore } from "./session/jsonl-store.js";
+export type { JsonlSessionStoreOptions } from "./session/jsonl-store.js";
+export {
+  SessionConsistencyError,
+  SessionManager,
+} from "./session/session-manager.js";
+export type { SessionStore } from "./session/store.js";
+export { SessionRuntime } from "./runtime/session-runtime.js";
 export { createReadFileTool } from "./tools/read-file.js";
 export type { FileToolOptions } from "./tools/read-file.js";
 export { createRunCommandTool } from "./tools/run-command.js";
