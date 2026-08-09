@@ -23,13 +23,16 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Explicit Agent Run lifecycle
 - Agent execution events
 - In-memory trace collection
+- Tool execution hooks
+- Policy gates
+- `beforeToolCall` / `afterToolCall` interception
 
 ## Not included yet
 
 - Compaction / summarization / token counting
 - Branch / navigation
 - Durable operations / durable traces / telemetry
-- Hooks / policies / approval
+- Interactive approval / durable policy decisions / RBAC
 - In-flight crash recovery
 - SQLite / server / protocol
 - Multi-agent
@@ -67,6 +70,18 @@ A Turn is one model response plus the complete sequential tool-call batch
 requested by that response.
 
 Runs and traces are not durable operations yet.
+
+## Hook and policy design
+
+Events observe execution. Hooks intercept execution. `beforeToolCall` runs
+after tool resolution and argument validation but before an Environment effect
+starts. `afterToolCall` can change how a completed result is represented back
+to the Agent, but it cannot undo the Environment effect.
+
+Policies are reusable Hook implementations. Async `beforeToolCall` hooks are
+the extension point for future human-in-the-loop approval. `DenyCommandPolicy`
+is only a demonstration exact-match gate; it is not a security sandbox or a
+complete shell security policy.
 
 ## Development
 

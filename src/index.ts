@@ -43,6 +43,17 @@ export type {
 } from "./events/event.js";
 export { TraceCollector } from "./events/trace.js";
 export type {
+  AfterToolCallContext,
+  AfterToolCallResult,
+  AgentHook,
+  BeforeToolCallContext,
+  BeforeToolCallResult,
+} from "./hooks/hook.js";
+export { DenyCommandPolicy } from "./hooks/policies/deny-command-policy.js";
+export type { DenyCommandPolicyOptions } from "./hooks/policies/deny-command-policy.js";
+export { DenyToolPolicy } from "./hooks/policies/deny-tool-policy.js";
+export type { DenyToolPolicyOptions } from "./hooks/policies/deny-tool-policy.js";
+export type {
   ModelClient,
   ModelInput,
   ModelToolDefinition,

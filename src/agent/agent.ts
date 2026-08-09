@@ -6,6 +6,7 @@ import {
 import type { AgentTool } from "../tools/tool.js";
 import { AgentEventEmitter } from "../events/emitter.js";
 import type { AgentEventListener } from "../events/event.js";
+import type { AgentHook } from "../hooks/hook.js";
 import {
   completeAgentRun,
   createAgentRun,
@@ -21,6 +22,7 @@ export interface AgentOptions {
   initialMessages?: readonly AgentMessage[];
   systemPrompt?: string;
   contextCompiler?: ContextCompiler;
+  hooks?: readonly AgentHook[];
 }
 
 /** A stateful runtime that owns conversation history and delegates work to the loop. */
@@ -30,12 +32,14 @@ export class Agent {
   private readonly model: ModelClient;
   private readonly maxTurns: number | undefined;
   private readonly contextCompiler: ContextCompiler;
+  private readonly hooks: AgentHook[];
 
   constructor(model: ModelClient, options: AgentOptions = {}) {
     this.model = model;
     this.maxTurns = options.maxTurns;
     this.contextCompiler =
       options.contextCompiler ?? new DefaultContextCompiler();
+    this.hooks = [...(options.hooks ?? [])];
     this.state = {
       systemPrompt: options.systemPrompt ?? "",
       messages: [...(options.initialMessages ?? [])],
@@ -74,6 +78,7 @@ export class Agent {
         contextCompiler: this.contextCompiler,
         runId: runningRun.id,
         emit: this.events.emit,
+        hooks: this.hooks,
       });
       this.state.status = "idle";
       const run = completeAgentRun(runningRun);

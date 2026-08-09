@@ -38,6 +38,7 @@ export interface ToolCallFinishedEvent extends EventBase {
   readonly toolCallId: string;
   readonly toolName: string;
   readonly isError: boolean;
+  readonly blocked: boolean;
 }
 
 export interface TurnFinishedEvent extends EventBase {

@@ -5,11 +5,17 @@ import {
 } from "../context/compiler.js";
 import { createAgentContextSnapshot } from "../context/snapshot.js";
 import type { AgentEventSink } from "../events/event.js";
+import type {
+  AfterToolCallResult,
+  AgentHook,
+  BeforeToolCallContext,
+} from "../hooks/hook.js";
 import { validateToolArguments } from "../tools/validate-arguments.js";
 import type { AgentState } from "./state.js";
 import type {
   AssistantMessage,
   ToolCall,
+  ToolResult,
   ToolResultMessage,
 } from "./types.js";
 
@@ -18,6 +24,7 @@ export interface AgentLoopOptions {
   contextCompiler?: ContextCompiler;
   runId?: string;
   emit?: AgentEventSink;
+  hooks?: readonly AgentHook[];
 }
 
 export class MaxTurnsExceededError extends Error {
@@ -31,51 +38,138 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+interface ToolCallExecution {
+  message: ToolResultMessage;
+  blocked: boolean;
+}
+
+function toolResultMessage(
+  call: ToolCall,
+  result: { content: string; isError?: boolean },
+): ToolResultMessage {
+  return {
+    role: "tool",
+    name: call.name,
+    toolCallId: call.id,
+    content: result.content,
+    ...(result.isError === undefined ? {} : { isError: result.isError }),
+  };
+}
+
 async function executeToolCall(
   state: AgentState,
   call: ToolCall,
-): Promise<ToolResultMessage> {
+  hooks: readonly AgentHook[],
+  runId: string,
+  turn: number,
+): Promise<ToolCallExecution> {
   const tool = state.tools.find((candidate) => candidate.name === call.name);
 
   if (!tool) {
     return {
-      role: "tool",
-      name: call.name,
-      toolCallId: call.id,
-      content: `Unknown tool: ${call.name}`,
-      isError: true,
+      message: toolResultMessage(call, {
+        content: `Unknown tool: ${call.name}`,
+        isError: true,
+      }),
+      blocked: false,
     };
   }
 
   const validation = validateToolArguments(tool.parameters, call.arguments);
   if (!validation.valid) {
     return {
-      role: "tool",
-      name: call.name,
-      toolCallId: call.id,
-      content: `Invalid arguments for ${call.name}: ${validation.error}`,
-      isError: true,
+      message: toolResultMessage(call, {
+        content: `Invalid arguments for ${call.name}: ${validation.error}`,
+        isError: true,
+      }),
+      blocked: false,
     };
   }
 
+  const args = Object.freeze({ ...validation.args });
+  const toolCall = Object.freeze({ ...call });
+  const context = createAgentContextSnapshot(state);
+  const beforeContext: BeforeToolCallContext = Object.freeze({
+    runId,
+    turn,
+    toolCall,
+    args,
+    context,
+  });
+
+  for (const hook of hooks) {
+    if (!hook.beforeToolCall) {
+      continue;
+    }
+    let decision;
+    try {
+      decision = await hook.beforeToolCall(beforeContext);
+    } catch (error) {
+      return {
+        message: toolResultMessage(call, {
+          content: `beforeToolCall failed: ${errorMessage(error)}`,
+          isError: true,
+        }),
+        blocked: true,
+      };
+    }
+    if (decision?.block === true) {
+      return {
+        message: toolResultMessage(call, {
+          content: decision.reason
+            ? `Tool execution blocked: ${decision.reason}`
+            : "Tool execution was blocked",
+          isError: true,
+        }),
+        blocked: true,
+      };
+    }
+  }
+
+  let result: ToolResult;
   try {
-    const result = await tool.execute(validation.args);
-    return {
-      role: "tool",
-      name: call.name,
-      toolCallId: call.id,
-      content: result.content,
-      ...(result.isError === undefined ? {} : { isError: result.isError }),
-    };
+    result = await tool.execute(args);
   } catch (error) {
-    return {
-      role: "tool",
-      name: call.name,
-      toolCallId: call.id,
+    result = {
       content: `Tool execution failed: ${errorMessage(error)}`,
       isError: true,
     };
   }
+
+  for (const hook of hooks) {
+    if (!hook.afterToolCall) {
+      continue;
+    }
+    let update: AfterToolCallResult | undefined;
+    try {
+      update = await hook.afterToolCall(
+        Object.freeze({
+          runId,
+          turn,
+          toolCall,
+          args,
+          result: Object.freeze({ ...result }),
+          isError: result.isError === true,
+          context,
+        }),
+      );
+    } catch (error) {
+      result = {
+        content: `afterToolCall failed: ${errorMessage(error)}`,
+        isError: true,
+      };
+      break;
+    }
+    if (update) {
+      const isError = update.isError ?? result.isError;
+      result = {
+        content: update.content ?? result.content,
+        ...(isError === undefined ? {} : { isError }),
+      };
+    }
+  }
+
+  return { message: toolResultMessage(call, result), blocked: false };
 }
 
 /** Runs model and tool turns until the model returns a final text response. */
@@ -89,6 +183,7 @@ export async function runAgentLoop(
     options.contextCompiler ?? new DefaultContextCompiler();
   const emit = options.emit ?? (async () => undefined);
   const runId = options.runId ?? "standalone";
+  const hooks = options.hooks ?? [];
 
   if (options.emit && !options.runId) {
     throw new Error("runId is required when an event sink is provided");
@@ -160,9 +255,15 @@ export async function runAgentLoop(
           toolName: call.name,
           timestamp: Date.now(),
         });
-        const toolResult = await executeToolCall(state, call);
-        state.messages.push(toolResult);
-        const isError = toolResult.isError === true;
+        const execution = await executeToolCall(
+          state,
+          call,
+          hooks,
+          runId,
+          turnNumber,
+        );
+        state.messages.push(execution.message);
+        const isError = execution.message.isError === true;
         hasError ||= isError;
         await emit({
           type: "tool_call_finished",
@@ -171,6 +272,7 @@ export async function runAgentLoop(
           toolCallId: call.id,
           toolName: call.name,
           isError,
+          blocked: execution.blocked,
           timestamp: Date.now(),
         });
       }
