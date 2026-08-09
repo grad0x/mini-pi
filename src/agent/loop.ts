@@ -1,4 +1,9 @@
 import type { ModelClient } from "../providers/model-client.js";
+import {
+  DefaultContextCompiler,
+  type ContextCompiler,
+} from "../context/compiler.js";
+import { createAgentContextSnapshot } from "../context/snapshot.js";
 import { validateToolArguments } from "../tools/validate-arguments.js";
 import type { AgentState } from "./state.js";
 import type {
@@ -9,6 +14,7 @@ import type {
 
 export interface AgentLoopOptions {
   maxTurns?: number;
+  contextCompiler?: ContextCompiler;
 }
 
 export class MaxTurnsExceededError extends Error {
@@ -76,20 +82,17 @@ export async function runAgentLoop(
   options: AgentLoopOptions = {},
 ): Promise<AssistantMessage> {
   const maxTurns = options.maxTurns ?? 10;
+  const contextCompiler =
+    options.contextCompiler ?? new DefaultContextCompiler();
 
   if (!Number.isInteger(maxTurns) || maxTurns < 1) {
     throw new RangeError("maxTurns must be a positive integer");
   }
 
   for (let turn = 0; turn < maxTurns; turn += 1) {
-    const assistantMessage = await model.generate({
-      messages: [...state.messages],
-      tools: state.tools.map(({ name, description, parameters }) => ({
-        name,
-        description,
-        parameters,
-      })),
-    });
+    const context = createAgentContextSnapshot(state);
+    const modelInput = await contextCompiler.compile(context);
+    const assistantMessage = await model.generate(modelInput);
     state.messages.push(assistantMessage);
 
     const toolCalls = assistantMessage.toolCalls ?? [];

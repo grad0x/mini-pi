@@ -1,4 +1,8 @@
 import type { ModelClient } from "../providers/model-client.js";
+import {
+  DefaultContextCompiler,
+  type ContextCompiler,
+} from "../context/compiler.js";
 import type { AgentTool } from "../tools/tool.js";
 import { runAgentLoop } from "./loop.js";
 import type { AgentState } from "./state.js";
@@ -8,6 +12,8 @@ export interface AgentOptions {
   tools?: AgentTool[];
   maxTurns?: number;
   initialMessages?: readonly AgentMessage[];
+  systemPrompt?: string;
+  contextCompiler?: ContextCompiler;
 }
 
 /** A stateful runtime that owns conversation history and delegates work to the loop. */
@@ -15,11 +21,15 @@ export class Agent {
   readonly state: AgentState;
   private readonly model: ModelClient;
   private readonly maxTurns: number | undefined;
+  private readonly contextCompiler: ContextCompiler;
 
   constructor(model: ModelClient, options: AgentOptions = {}) {
     this.model = model;
     this.maxTurns = options.maxTurns;
+    this.contextCompiler =
+      options.contextCompiler ?? new DefaultContextCompiler();
     this.state = {
+      systemPrompt: options.systemPrompt ?? "",
       messages: [...(options.initialMessages ?? [])],
       tools: [...(options.tools ?? [])],
       status: "idle",
@@ -39,6 +49,7 @@ export class Agent {
     try {
       const finalMessage = await runAgentLoop(this.state, this.model, {
         ...(this.maxTurns === undefined ? {} : { maxTurns: this.maxTurns }),
+        contextCompiler: this.contextCompiler,
       });
       this.state.status = "idle";
       return {

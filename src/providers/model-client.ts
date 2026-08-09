@@ -8,6 +8,7 @@ export interface ModelToolDefinition {
 }
 
 export interface ModelInput {
+  systemPrompt: string;
   messages: readonly AgentMessage[];
   tools: readonly ModelToolDefinition[];
 }

@@ -17,10 +17,13 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Runtime-owned tool result correlation and run trajectories
 - Session persistence
 - JSONL restore
+- Agent context snapshots
+- Context compiler
+- Recent-run context projection
 
 ## Not included yet
 
-- Context compiler / compaction
+- Compaction / summarization / token counting
 - Branch / navigation
 - Operations / events / tracing
 - Hooks / policies / approval
@@ -37,6 +40,18 @@ run-boundary persistence.
 
 Completed and failed runs can be restored between processes. Crash recovery
 during an in-flight run is not supported yet.
+
+If durable persistence fails, `SessionRuntime` becomes faulted and must be
+discarded and restored before conversation can continue.
+
+## Context design
+
+`SessionManager` stores the complete durable trajectory. `AgentState` holds the
+complete in-process transcript. `AgentContext` is a stable top-level snapshot
+created before each model call, and `ContextCompiler` decides which parts of
+that runtime state become `ModelInput`.
+
+Context projection never deletes or rewrites durable session history.
 
 ## Development
 

@@ -9,12 +9,14 @@ import {
   SessionConsistencyError,
   SessionManager,
   SessionRuntime,
+  SessionRuntimeFaultedError,
   type AgentMessage,
   type AgentTool,
   type AssistantMessage,
   type MessageSessionEntry,
   type ModelClient,
   type ModelInput,
+  type SessionEntry,
   type SessionStore,
 } from "../src/index.js";
 
@@ -189,6 +191,37 @@ describe("SessionManager", () => {
 });
 
 describe("SessionRuntime", () => {
+  it("becomes faulted when persistence fails and rejects later prompts", async () => {
+    const persisted: SessionEntry[] = [];
+    const store: SessionStore = {
+      load: async () => [],
+      append: vi.fn(async (_sessionId, sessionEntry) => {
+        if (persisted.length === 1) {
+          throw new Error("disk unavailable");
+        }
+        persisted.push(structuredClone(sessionEntry));
+      }),
+    };
+    const session = await SessionManager.open("faulted", store);
+    const model = new SequenceModel([
+      { role: "assistant", content: "Assistant A" },
+    ]);
+    const runtime = new SessionRuntime(new Agent(model), session);
+
+    await expect(runtime.prompt("User A")).rejects.toThrow("disk unavailable");
+    expect(runtime.status).toBe("faulted");
+    expect(runtime.agent.state.messages).toHaveLength(2);
+    expect(session.getMessages()).toHaveLength(1);
+
+    await expect(runtime.prompt("User B")).rejects.toBeInstanceOf(
+      SessionRuntimeFaultedError,
+    );
+    await expect(runtime.prompt("User B")).rejects.toThrow(
+      "Restore the session before continuing.",
+    );
+    expect(model.generate).toHaveBeenCalledTimes(1);
+  });
+
   it("restores persisted messages into a new Agent instance", async () => {
     const { store } = await createStore();
     const session = await SessionManager.open("restore", store);

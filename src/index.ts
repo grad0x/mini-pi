@@ -12,6 +12,16 @@ export type {
   ToolResultMessage,
   UserMessage,
 } from "./agent/types.js";
+export {
+  DefaultContextCompiler,
+  RecentRunsContextCompiler,
+} from "./context/compiler.js";
+export type {
+  ContextCompiler,
+  RecentRunsContextCompilerOptions,
+} from "./context/compiler.js";
+export type { AgentContext } from "./context/context.js";
+export { createAgentContextSnapshot } from "./context/snapshot.js";
 export type {
   ModelClient,
   ModelInput,
@@ -29,7 +39,11 @@ export {
   SessionManager,
 } from "./session/session-manager.js";
 export type { SessionStore } from "./session/store.js";
-export { SessionRuntime } from "./runtime/session-runtime.js";
+export {
+  SessionRuntime,
+  SessionRuntimeFaultedError,
+} from "./runtime/session-runtime.js";
+export type { SessionRuntimeStatus } from "./runtime/session-runtime.js";
 export { createReadFileTool } from "./tools/read-file.js";
 export type { FileToolOptions } from "./tools/read-file.js";
 export { createRunCommandTool } from "./tools/run-command.js";

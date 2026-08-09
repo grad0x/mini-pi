@@ -15,7 +15,9 @@ import {
   createReadFileTool,
   createRunCommandTool,
   createWriteFileTool,
+  type AssistantMessage,
   type ModelClient,
+  type ModelInput,
 } from "../src/index.js";
 
 const temporaryRoots: string[] = [];
@@ -53,19 +55,28 @@ describe("read_file", () => {
     const { workspace } = await createWorkspace();
     await writeFile(join(workspace, "hello.txt"), "from workspace", "utf8");
     const model: ModelClient = {
-      generate: vi.fn(async ({ messages }) => {
-        const lastMessage = messages.at(-1);
-        if (lastMessage?.role === "tool") {
-          return { role: "assistant", content: `done: ${lastMessage.content}` };
-        }
-        return {
-          role: "assistant",
-          content: "Reading hello.txt",
-          toolCalls: [
-            { id: "read-1", name: "read_file", arguments: { path: "hello.txt" } },
-          ],
-        };
-      }),
+      generate: vi.fn(
+        async ({ messages }: ModelInput): Promise<AssistantMessage> => {
+          const lastMessage = messages.at(-1);
+          if (lastMessage?.role === "tool") {
+            return {
+              role: "assistant",
+              content: `done: ${lastMessage.content}`,
+            };
+          }
+          return {
+            role: "assistant",
+            content: "Reading hello.txt",
+            toolCalls: [
+              {
+                id: "read-1",
+                name: "read_file",
+                arguments: { path: "hello.txt" },
+              },
+            ],
+          };
+        },
+      ),
     };
     const agent = new Agent(model, {
       tools: [createReadFileTool({ workspaceRoot: workspace })],
