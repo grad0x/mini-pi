@@ -1,3 +1,5 @@
+import type { AgentRun } from "../runtime/run.js";
+
 export interface ToolCall {
   id: string;
   name: string;
@@ -35,6 +37,7 @@ export type AgentMessage =
   | ToolResultMessage;
 
 export interface AgentRunResult {
+  run: AgentRun;
   finalMessage: AssistantMessage;
   newMessages: AgentMessage[];
 }

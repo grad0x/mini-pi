@@ -20,12 +20,15 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Agent context snapshots
 - Context compiler
 - Recent-run context projection
+- Explicit Agent Run lifecycle
+- Agent execution events
+- In-memory trace collection
 
 ## Not included yet
 
 - Compaction / summarization / token counting
 - Branch / navigation
-- Operations / events / tracing
+- Durable operations / durable traces / telemetry
 - Hooks / policies / approval
 - In-flight crash recovery
 - SQLite / server / protocol
@@ -52,6 +55,18 @@ created before each model call, and `ContextCompiler` decides which parts of
 that runtime state become `ModelInput`.
 
 Context projection never deletes or rewrites durable session history.
+
+## Run and event design
+
+A Run is one prompt execution lifecycle inside a Session. Events observe
+execution but do not modify it, and listener failures are isolated from Agent
+execution. `TraceCollector` records ordered in-memory events for debugging and
+future evaluation.
+
+A Turn is one model response plus the complete sequential tool-call batch
+requested by that response.
+
+Runs and traces are not durable operations yet.
 
 ## Development
 

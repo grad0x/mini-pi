@@ -22,6 +22,26 @@ export type {
 } from "./context/compiler.js";
 export type { AgentContext } from "./context/context.js";
 export { createAgentContextSnapshot } from "./context/snapshot.js";
+export { AgentEventEmitter } from "./events/emitter.js";
+export type { AgentEventListenerError } from "./events/emitter.js";
+export type {
+  AgentEvent,
+  AgentEventListener,
+  AgentEventSink,
+  AgentEventSource,
+  CompletedRunFinishedEvent,
+  EventBase,
+  FailedRunFinishedEvent,
+  ModelCallFinishedEvent,
+  ModelCallStartedEvent,
+  RunFinishedEvent,
+  RunStartedEvent,
+  ToolCallFinishedEvent,
+  ToolCallStartedEvent,
+  TurnFinishedEvent,
+  TurnStartedEvent,
+} from "./events/event.js";
+export { TraceCollector } from "./events/trace.js";
 export type {
   ModelClient,
   ModelInput,
@@ -44,6 +64,12 @@ export {
   SessionRuntimeFaultedError,
 } from "./runtime/session-runtime.js";
 export type { SessionRuntimeStatus } from "./runtime/session-runtime.js";
+export {
+  completeAgentRun,
+  createAgentRun,
+  failAgentRun,
+} from "./runtime/run.js";
+export type { AgentRun, AgentRunStatus } from "./runtime/run.js";
 export { createReadFileTool } from "./tools/read-file.js";
 export type { FileToolOptions } from "./tools/read-file.js";
 export { createRunCommandTool } from "./tools/run-command.js";
