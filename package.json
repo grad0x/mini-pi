@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "pnpm build && vitest run tests",
+    "test:watch": "pnpm build && vitest tests",
+    "demo:fix-bug": "pnpm build && node examples/fix-bug/run.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

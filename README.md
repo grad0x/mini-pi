@@ -26,6 +26,52 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Tool execution hooks
 - Policy gates
 - `beforeToolCall` / `afterToolCall` interception
+- Deterministic integrated fix-bug acceptance demo
+
+## Fix Bug Demo
+
+```bash
+pnpm install
+pnpm demo:fix-bug
+```
+
+Each run copies an intentionally broken calculator fixture into a temporary
+workspace. The Agent reads the implementation and test with real Mini Pi tools,
+applies the minimal fix, runs `node --test`, persists the complete trajectory to
+JSONL, restores it from disk, and exercises a denied-command Policy gate.
+
+The demo uses a deterministic `ModelClient`. It validates Mini Pi's Harness
+execution path, not LLM reasoning quality.
+
+## v0.1 architecture
+
+See [Mini Pi v0.1 Architecture](docs/architecture.md) for the current execution
+and persistence boundaries. Known acceptance findings are recorded in
+[v0.1 Review Notes](docs/v0.1-review-notes.md).
+
+## Capability matrix
+
+| Capability               | v0.1 |
+| ------------------------ | ---- |
+| Agent State              | Yes  |
+| Agent Loop               | Yes  |
+| Tool Calling             | Yes  |
+| Workspace Tools          | Yes  |
+| Argument Validation      | Yes  |
+| Session Persistence      | Yes  |
+| Restore                  | Yes  |
+| Context Projection       | Yes  |
+| Run / Turn Lifecycle     | Yes  |
+| Events / Trace           | Yes  |
+| Hooks                    | Yes  |
+| Policy Gate              | Yes  |
+| Real LLM Provider        | No   |
+| In-flight Crash Recovery | No   |
+| Durable Operation        | No   |
+| Compaction               | No   |
+| Branching                | No   |
+| Server / Protocol        | No   |
+| Multi-agent              | No   |
 
 ## Not included yet
 
