@@ -58,6 +58,13 @@ export type {
   ModelInput,
   ModelToolDefinition,
 } from "./providers/model-client.js";
+export {
+  OpenAICompatibleModelClient,
+  OpenAICompatibleProviderError,
+} from "./providers/openai-compatible.js";
+export type {
+  OpenAICompatibleModelClientOptions,
+} from "./providers/openai-compatible.js";
 export type {
   MessageSessionEntry,
   SessionEntry,

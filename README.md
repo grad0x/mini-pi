@@ -27,6 +27,8 @@ v0.1 starts from the smallest executable core: Agent + Model + Tool + Loop.
 - Policy gates
 - `beforeToolCall` / `afterToolCall` interception
 - Deterministic integrated fix-bug acceptance demo
+- OpenAI-compatible Chat Completions provider
+- Real LLM fix-bug experiment
 
 ## Fix Bug Demo
 
@@ -42,6 +44,27 @@ JSONL, restores it from disk, and exercises a denied-command Policy gate.
 
 The demo uses a deterministic `ModelClient`. It validates Mini Pi's Harness
 execution path, not LLM reasoning quality.
+
+## Real LLM Demo
+
+The deterministic Fix-Bug Demo validates repeatable Harness correctness. The
+Real LLM Fix-Bug Demo uses the same fixture to experiment with a probabilistic
+`ModelClient`; its exact Tool trajectory can vary between runs.
+
+Configure any compatible Chat Completions endpoint through environment
+variables and run:
+
+```bash
+export MINI_PI_LLM_BASE_URL=https://api.deepseek.com
+export MINI_PI_LLM_API_KEY=<your-key>
+export MINI_PI_LLM_MODEL=deepseek-v4-flash
+
+pnpm demo:real-llm
+```
+
+The provider itself contains no DeepSeek-specific behavior. Missing variables
+produce an explicit error, and the Demo never falls back to the deterministic
+model. Do not commit real API keys; `.env` and `.env.local` are ignored.
 
 ## v0.1 architecture
 
@@ -65,7 +88,7 @@ and persistence boundaries. Known acceptance findings are recorded in
 | Events / Trace           | Yes  |
 | Hooks                    | Yes  |
 | Policy Gate              | Yes  |
-| Real LLM Provider        | No   |
+| Real LLM Provider        | Yes  |
 | In-flight Crash Recovery | No   |
 | Durable Operation        | No   |
 | Compaction               | No   |

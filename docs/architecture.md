@@ -72,3 +72,17 @@ state and become observations for the next model call.
 
 Events are an observational side channel. They expose Run, Turn, model, and
 tool lifecycle data to `TraceCollector` without controlling execution.
+
+## Provider boundary
+
+```text
+AgentLoop -> ModelClient <- OpenAICompatibleModelClient
+                              |
+                              v
+                   Chat Completions HTTP API
+```
+
+`ModelClient` remains the Core-owned port. The OpenAI-compatible implementation
+is an Adapter that translates provider-neutral `ModelInput` and
+`AssistantMessage` values at the HTTP boundary; Agent Core does not import its
+wire types.
